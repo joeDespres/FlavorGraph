@@ -120,3 +120,6 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+FlavorGraph Node Embedding.pickle
+M17-metapath_CHNHC+NHCHN+RandWalk-whichmeta_100-num_walks_50-len_metapath.txt
+emb.txt
