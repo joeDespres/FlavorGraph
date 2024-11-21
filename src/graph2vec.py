@@ -14,6 +14,7 @@ from model import SkipGramModel, SkipGramModelAux
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
+
 class Metapath2Vec:
     def __init__(self, args, graph):
         # 1. generate walker
@@ -27,7 +28,13 @@ class Metapath2Vec:
             if file.startswith(args.idx_metapath):
                 is_file = True
                 print("\n !!! Found the file that you have specified...")
-                self.inputFileName = "{}{}-metapath_{}-whichmeta_{}-num_walks_{}-len_metapath.txt".format(args.input_path, args.idx_metapath, args.which_metapath, args.num_walks, args.len_metapath)
+                self.inputFileName = "{}{}-metapath_{}-whichmeta_{}-num_walks_{}-len_metapath.txt".format(
+                    args.input_path,
+                    args.idx_metapath,
+                    args.which_metapath,
+                    args.num_walks,
+                    args.len_metapath,
+                )
                 print("### Metapaths Loaded...", self.inputFileName)
 
         # if file does not exists, create the new one.
@@ -36,23 +43,47 @@ class Metapath2Vec:
             print("### Creating new Metapaths...")
             self.metapaths = walker.generate_metapaths(args)
             walker.create_metapath_walks(args, args.num_walks, self.metapaths)
-            self.inputFileName = "{}{}-metapath_{}-whichmeta_{}-num_walks_{}-len_metapath.txt".format(args.input_path, args.idx_metapath, args.which_metapath, args.num_walks, args.len_metapath)
+            self.inputFileName = (
+                "{}{}-metapath_{}-whichmeta_{}-num_walks_{}-len_metapath.txt".format(
+                    args.input_path,
+                    args.idx_metapath,
+                    args.which_metapath,
+                    args.num_walks,
+                    args.len_metapath,
+                )
+            )
             print("### Metapaths Loaded...", self.inputFileName)
 
         # 2. read data
-        print("\n\n##########################################################################")
+        print(
+            "\n\n##########################################################################"
+        )
         print("### Metapaths to DataLoader...", self.inputFileName)
         self.data = DataReader(args.min_count, args.care_type, self.inputFileName)
 
         # 3. make dataset for training
         dataset = DatasetLoader(self.data, args.window_size)
 
-
         # 4. initialize dataloader
-        self.dataloader = DataLoader(dataset, batch_size=args.batch_size,
-                                     shuffle=True, num_workers=args.num_workers, collate_fn=dataset.collate)
+        self.dataloader = DataLoader(
+            dataset,
+            batch_size=args.batch_size,
+            shuffle=True,
+            num_workers=args.num_workers,
+            collate_fn=dataset.collate,
+        )
         self.output_file_name = "{}{}-embedding_{}-metapath_{}-dim_{}-initial_lr_{}-window_size_{}-iterations_{}-min_count-_{}-isCSP_{}-CSPcoef.pickle".format(
-                            args.output_path, args.idx_embed, args.idx_metapath, args.dim, args.initial_lr, args.window_size, args.iterations, args.min_count, args.CSP_train, args.CSP_coef)
+            args.output_path,
+            args.idx_embed,
+            args.idx_metapath,
+            args.dim,
+            args.initial_lr,
+            args.window_size,
+            args.iterations,
+            args.min_count,
+            args.CSP_train,
+            args.CSP_coef,
+        )
         self.emb_size = len(self.data.word2id)
         self.emb_dimension = args.dim
         self.batch_size = args.batch_size
@@ -64,7 +95,13 @@ class Metapath2Vec:
         if args.CSP_train:
             print("\n\n#####################################")
             print("### SkipGram with CSP")
-            self.skip_gram_model = SkipGramModelAux(self.emb_size, self.emb_dimension, nodes=self.data.id2word, aux_coef=self.aux_coef, CSP_save=args.CSP_save)
+            self.skip_gram_model = SkipGramModelAux(
+                self.emb_size,
+                self.emb_dimension,
+                nodes=self.data.id2word,
+                aux_coef=self.aux_coef,
+                CSP_save=args.CSP_save,
+            )
         else:
             print("\n\n#####################################")
             print("### SkipGram Normal")
@@ -77,7 +114,7 @@ class Metapath2Vec:
 
     def train(self):
         for iteration in range(self.iterations):
-            #print(self.skip_gram_model.u_embeddings.weight.data)
+            # print(self.skip_gram_model.u_embeddings.weight.data)
             print("\n\n\nIteration: " + str(iteration + 1))
             # Temporary Fix!
             if self.aux_mode:
@@ -86,13 +123,21 @@ class Metapath2Vec:
                 e = self.skip_gram_model.encoder.weight
                 optimizer = optim.Adam([u, v], lr=self.initial_lr)
                 aux_optimizer = optim.Adam([e], lr=0.001)
-                aux_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(aux_optimizer, len(self.dataloader))
+                aux_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+                    aux_optimizer, len(self.dataloader)
+                )
             else:
-                optimizer = optim.SparseAdam(self.skip_gram_model.parameters(), lr=self.initial_lr)
-            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, len(self.dataloader))
+                optimizer = optim.SparseAdam(
+                    self.skip_gram_model.parameters(), lr=self.initial_lr
+                )
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+                optimizer, len(self.dataloader)
+            )
 
             running_loss = 0.0
+            print("here")
             for i, sample_batched in enumerate(tqdm(self.dataloader)):
+                print("here")
                 if len(sample_batched[0]) > 1:
                     pos_u = sample_batched[0].to(self.device)
                     pos_v = sample_batched[1].to(self.device)
@@ -111,12 +156,13 @@ class Metapath2Vec:
                         aux_optimizer.step()
                     running_loss = running_loss * 0.9 + loss.item() * 0.1
 
-                    #if i > 0 and i % int(len(self.dataloader)/3) == 0:
+                    # if i > 0 and i % int(len(self.dataloader)/3) == 0:
             print(" Loss: " + str(running_loss))
             if self.aux_mode:
-                    print(" Auxiliary Loss: " + str(self.skip_gram_model.aux_loss.item()))
+                print(" Auxiliary Loss: " + str(self.skip_gram_model.aux_loss.item()))
 
         self.skip_gram_model.save_embedding(self.data.id2word, self.output_file_name)
+
 
 class Node2Vec:
     def __init__(self, args, graph):
@@ -126,7 +172,9 @@ class Node2Vec:
         print("\nDoing deepwalks...\n")
         walker.create_features()
 
-        self.inputFileName = "{}{}-deepwalk_{}-num_walks_{}-len_metapath.txt".format(args.input_path, args.idx_metapath, args.number_of_walks, args.walk_length)
+        self.inputFileName = "{}{}-deepwalk_{}-num_walks_{}-len_metapath.txt".format(
+            args.input_path, args.idx_metapath, args.number_of_walks, args.walk_length
+        )
 
         # 2. read data
         self.data = DataReader(args.min_count, args.care_type, self.inputFileName)
@@ -135,11 +183,24 @@ class Node2Vec:
         dataset = DatasetLoader(self.data, args.window_size)
 
         # 4. initialize dataloader
-        self.dataloader = DataLoader(dataset, batch_size=args.batch_size,
-                                     shuffle=True, num_workers=args.num_workers, collate_fn=dataset.collate)
+        self.dataloader = DataLoader(
+            dataset,
+            batch_size=args.batch_size,
+            shuffle=True,
+            num_workers=args.num_workers,
+            collate_fn=dataset.collate,
+        )
 
         self.output_file_name = "{}{}-embedding_{}-deepwalk_{}-dim_{}-initial_lr_{}-window_size_{}-iterations_{}-min_count.pickle".format(
-                            args.output_path, args.idx_embed, args.idx_metapath, args.dim, args.initial_lr, args.window_size, args.iterations, args.min_count)
+            args.output_path,
+            args.idx_embed,
+            args.idx_metapath,
+            args.dim,
+            args.initial_lr,
+            args.window_size,
+            args.iterations,
+            args.min_count,
+        )
         self.emb_size = len(self.data.word2id)
         self.emb_dimension = args.dim
         self.batch_size = args.batch_size
@@ -155,8 +216,12 @@ class Node2Vec:
     def train(self):
         for iteration in range(self.iterations):
             print("\n\n\nIteration: " + str(iteration + 1))
-            optimizer = optim.SparseAdam(self.skip_gram_model.parameters(), lr=self.initial_lr)
-            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, len(self.dataloader))
+            optimizer = optim.SparseAdam(
+                self.skip_gram_model.parameters(), lr=self.initial_lr
+            )
+            scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+                optimizer, len(self.dataloader)
+            )
 
             running_loss = 0.0
             for i, sample_batched in enumerate(tqdm(self.dataloader)):
@@ -173,4 +238,6 @@ class Node2Vec:
                     optimizer.step()
                     running_loss = running_loss * 0.9 + loss.item() * 0.1
             print(" Loss: " + str(running_loss))
-            self.skip_gram_model.save_embedding(self.data.id2word, self.output_file_name)
+            self.skip_gram_model.save_embedding(
+                self.data.id2word, self.output_file_name
+            )

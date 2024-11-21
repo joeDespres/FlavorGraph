@@ -7,6 +7,7 @@ from graph2vec import Metapath2Vec, Node2Vec
 from plotter import plot_embedding
 
 import os
+
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 
@@ -25,12 +26,11 @@ def main():
     """
     graph, graph_ingr_only = graph_reader(args.input_nodes, args.input_edges)
 
-
     """
     2. Metapath2vec with MetaPathWalker - Ingredient-Ingredient / Ingredient-Food-like Compound / Ingredient-Drug-like Compound
     """
-    
-    if args.idx_embed == 'Node2vec':
+
+    if args.idx_embed == "Node2vec":
         node2vec = Node2Vec(args, graph)
         node2vec.train()
 
@@ -47,6 +47,7 @@ def main():
     4. Evaluate Node Classification & Node Clustering
     """
     evaluate(args, graph)
+
 
 if __name__ == "__main__":
     main()
